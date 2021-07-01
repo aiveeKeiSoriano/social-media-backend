@@ -22,7 +22,7 @@ router.post("/signin", async (req, res) => {
         }
         let access_token = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRE })
         let refresh_token = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRE })
-        await userController.addRefresh(result.result, refresh_token)
+        await userController.addRefresh(result.result.username, refresh_token)
         res.status(201).send({ access_token, refresh_token })
     }
     else {
@@ -30,12 +30,43 @@ router.post("/signin", async (req, res) => {
     }
 })
 
-router.post("/logout", async (req, res) => {
-
+router.post("/signout", async (req, res) => {
+    let header = req.headers["authorization"]
+    if (!header) {
+        res.status(403).send({ message: "Need authorization header" })
+    }
+    let access_token = header.split(" ")[1]
+    try {
+        let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
+        let result = await userController.removeRefresh(user.username)
+        if (result.status) {
+            res.status(200).send(result.result)
+        }
+        else {
+            res.status(401).send(result.result)
+        }
+    }
+    catch (e) {
+        res.status(403).send({ message: "Inavalid access token" })
+    }
 })
 
 router.post("/token", async (req, res) => {
-
+    let { refresh_token } = req.body
+    try {
+        let user = jwt.verify(refresh_token, process.env.REFRESH_TOKEN_SECRET)
+        let result = await userController.validateRefresh(user.username, refresh_token)
+        if (result.status) {
+            let access_token = jwt.sign({ username: user.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRE })
+            res.status(200).send({ access_token })
+        }
+        else {
+            res.status(403).send({ message: "Invalid refresh token" })
+        }
+    }
+    catch (e) {
+        res.status(403).send({ message: "Inavalid refresh token" })
+    }
 })
 
 module.exports = router
