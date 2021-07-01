@@ -5,6 +5,7 @@ const mongoose = require("mongoose")
 const morgan = require("morgan")
 
 const authRouter = require("./routes/auth")
+const postRouter = require("./routes/post")
 const userController = require("./controllers/userController")
 
 const jwt = require("jsonwebtoken")
@@ -19,9 +20,28 @@ mongoose.connect(process.env.MONGO_URL, {
 app.use(morgan("dev"))
 app.use(express.json())
 
-app.use('/auth', authRouter)
+let verifyToken = async (req, res, next) => {
+    let header = req.headers["authorization"]
+    if (!header) {
+        res.status(403).send({ message: "Need authorization header" })
+    }
+    let access_token = header.split(" ")[1]
+    if (!access_token) {
+        res.status(403).send({ message: "Need access token" })
+    }
+    try {
+        let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
+        next()
+    }
+    catch (e) {
+        res.status(403).send({ message: "Inavalid access token" })
+    }
+}
 
-app.get('/followers', async (req, res) => {
+app.use("/auth", authRouter)
+app.use("/posts", verifyToken, postRouter)
+
+app.get('/followers', verifyToken, async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
@@ -34,7 +54,7 @@ app.get('/followers', async (req, res) => {
     }
 })
 
-app.get('/following', async (req, res) => {
+app.get('/following', verifyToken, async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
@@ -47,7 +67,7 @@ app.get('/following', async (req, res) => {
     }
 })
 
-app.post('/follow/:username', async (req, res) => {
+app.post('/follow/:username', verifyToken, async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
@@ -60,7 +80,7 @@ app.post('/follow/:username', async (req, res) => {
     }
 })
 
-app.post('/unfollow/:username',async (req, res) => {
+app.post('/unfollow/:username', verifyToken, async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
@@ -73,7 +93,7 @@ app.post('/unfollow/:username',async (req, res) => {
     }
 })
 
-app.post('/block/:username', async (req, res) => {
+app.post('/block/:username', verifyToken, async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
