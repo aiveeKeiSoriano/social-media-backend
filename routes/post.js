@@ -1,8 +1,8 @@
 const express = require("express")
 const postController = require("../controllers/postController")
+const jwt = require("jsonwebtoken")
 
 const router = express.Router()
-
 
 router.get("/", async (req, res) => {
     let header = req.headers["authorization"]
@@ -48,7 +48,7 @@ router.delete("/:id", async (req, res) => {
     let header = req.headers["authorization"]
     let access_token = header.split(" ")[1]
     let user = jwt.verify(access_token, process.env.ACCESS_TOKEN_SECRET)
-    let result = await postController.getPost(user.username, req.params.id)
+    let result = await postController.deletePost(user.username, req.params.id)
     if (result.status) {
         res.status(201).send(result.result)
     }
